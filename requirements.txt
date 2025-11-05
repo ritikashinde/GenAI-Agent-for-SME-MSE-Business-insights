@@ -6,10 +6,11 @@ matplotlib
 # AI & Language Model (LLM)
 transformers
 torch
-accelerate            # Required by transformers for 'device_map="auto"'
+accelerate
 
 # Retrieval-Augmented Generation (RAG)
-langchain-community   # For FAISS wrapper and docstore
-langchain-text-splitters # For CharacterTextSplitter
-sentence-transformers # For 'all-MiniLM-L6-v2' embeddings
-faiss-cpu             # For the vector database (use 'faiss-gpu' if you have a compatible CUDA setup)
+langchain-community
+langchain-text-splitters
+sentence-transformers
+faiss-cpu
+typing-extensions
