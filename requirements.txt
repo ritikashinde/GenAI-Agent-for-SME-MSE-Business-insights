@@ -1,0 +1,15 @@
+# Core App & Data
+streamlit
+pandas
+matplotlib
+
+# AI & Language Model (LLM)
+transformers
+torch
+accelerate            # Required by transformers for 'device_map="auto"'
+
+# Retrieval-Augmented Generation (RAG)
+langchain-community   # For FAISS wrapper and docstore
+langchain-text-splitters # For CharacterTextSplitter
+sentence-transformers # For 'all-MiniLM-L6-v2' embeddings
+faiss-cpu             # For the vector database (use 'faiss-gpu' if you have a compatible CUDA setup)
