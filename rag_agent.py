@@ -1,67 +1,39 @@
+import streamlit as st
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
-import requests
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.docstore.document import Document
 
-# Use the free public FLAN-T5 model (no token required)
-API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+# Title
+st.set_page_config(page_title="RAG Demo - No API Key", layout="wide")
+st.title(" Local RAG Demo (No API Key Needed)")
 
-def query_hf(prompt: str):
-    """Query the Hugging Face API (no authentication needed for public models)"""
-    payload = {"inputs": prompt, "parameters": {"max_new_tokens": 150}}
-    response = requests.post(API_URL, json=payload)
-    if response.status_code == 200:
-        data = response.json()
-        if isinstance(data, list) and len(data) > 0:
-            return data[0]["generated_text"]
-        else:
-            return "⚠️ Model returned no output."
-    else:
-        return f"⚠️ Error {response.status_code}: {response.text}"
+# Load dataset
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.write("Data preview:", df.head())
 
+    text_column = st.selectbox("Select text column for context:", df.columns)
+    docs = df[text_column].astype(str).tolist()
 
-def build_agent(data_path="data/business_data.csv"):
-    df = pd.read_csv(data_path)
+    # Embed model (lightweight + no API key)
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-    # Prepare text corpus
-    text = "\n".join(
-        f"Month: {r['Month']}, Sales: {r['Sales (INR)']}, Expenses: {r['Expenses (INR)']}, "
-        f"Customers: {r['Customers']}, Inventory Cost: {r['Inventory Cost (INR)']}, "
-        f"Marketing Spend: {r['Marketing Spend (INR)']}"
-        for _, r in df.iterrows()
-    )
-    docs = [Document(page_content=text)]
+    # Precompute embeddings
+    st.info("Encoding text data... (only runs once)")
+    doc_embeddings = model.encode(docs, show_progress_bar=True)
 
-    # Split into chunks
-    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(docs)
+    # User query
+    query = st.text_input("Enter your question:")
+    if query:
+        query_emb = model.encode([query])
+        sims = cosine_similarity(query_emb, doc_embeddings)[0]
+        top_idx = sims.argsort()[-3:][::-1]
 
-    # Create embeddings and FAISS retriever
-    embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectordb = FAISS.from_documents(chunks, embeddings)
-    retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-
-    def answer_question(query: str):
-        retrieved_docs = retriever.invoke(query)
-        context = "\n".join(d.page_content for d in retrieved_docs)
-
-        prompt = (
-            f"You are a business analyst. Use the context to answer clearly and concisely.\n\n"
-            f"Context:\n{context}\n\n"
-            f"Question: {query}\n\nAnswer:"
-        )
-
-        response = query_hf(prompt)
-        answer = response.split("Answer:")[-1].strip()
-        return answer
-
-    return answer_question
-
-
-# Streamlit wrapper
-_agent = build_agent()
-
-def query_agent(query: str):
-    return _agent(query)
+        st.subheader(" Top Relevant Results")
+        for i in top_idx:
+            st.markdown(f"**Context:** {docs[i]}")
+            st.markdown(f"**Similarity:** {sims[i]:.3f}")
+            st.markdown("---")
+else:
+    st.info("Please upload a CSV file to get started.")
