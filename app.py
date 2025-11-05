@@ -46,7 +46,7 @@ if uploaded:
     df = pd.read_csv(uploaded)
     st.success(" New dataset uploaded successfully!")
 else:
-    df = pd.read_csv("data/business_data.csv")
+    df = pd.read_csv("business_data.csv")
 
 # ==================== SIDEBAR METRICS ====================
 with st.sidebar:
