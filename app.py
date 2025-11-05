@@ -1,7 +1,8 @@
 import streamlit as st
-from rag_agent import query_agent
+from rag_agent import query_agent  
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 # ==================== PAGE CONFIG ====================
 st.set_page_config(
@@ -42,11 +43,16 @@ st.markdown("Your intelligent assistant for analyzing sales, expenses, and marke
 # ==================== FILE UPLOAD ====================
 uploaded = st.file_uploader(" Upload a CSV file (optional)", type=["csv"])
 
+default_path = "business_data.csv"
+if not os.path.exists(default_path):
+    st.error(" Default data file 'business_data.csv' not found. Please upload one.")
+    st.stop()
+
 if uploaded:
     df = pd.read_csv(uploaded)
-    st.success(" New dataset uploaded successfully!")
+    st.success("New dataset uploaded successfully!")
 else:
-    df = pd.read_csv("business_data.csv")
+    df = pd.read_csv(default_path)
 
 # ==================== SIDEBAR METRICS ====================
 with st.sidebar:
@@ -74,7 +80,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if len(st.session_state.chat_history) == 0:
-    st.markdown("###  Quick Overview")
+    st.markdown("### Quick Overview")
     st.success(
         f"Your dataset covers **{len(df)} months**. "
         f"The highest profit was in **{best_month}**, "
@@ -105,13 +111,16 @@ st.markdown("---")
 st.header(" Ask the AI Analyst")
 
 query = st.text_input("Enter your business question:")
-ask = st.button(" Analyze")
+ask = st.button("Analyze")
 
 if ask and query:
     with st.spinner("Analyzing your business data..."):
-        answer = query_agent(query)
-        st.session_state.chat_history.append((query, answer))
-        st.success(answer)
+        try:
+            answer = query_agent(query)
+            st.session_state.chat_history.append((query, answer))
+            st.success(answer)
+        except Exception as e:
+            st.error(f" Error: {e}")
 
     # Auto chart trigger if user asks about trends
     if any(x in query.lower() for x in ["trend", "chart", "plot", "graph", "compare"]):
@@ -121,7 +130,7 @@ if ask and query:
 # ==================== CHAT HISTORY ====================
 if st.session_state.chat_history:
     st.markdown("---")
-    st.markdown("###  Conversation History")
+    st.markdown("### Conversation History")
     for q, a in reversed(st.session_state.chat_history):
         st.markdown(f"** You:** {q}")
         st.markdown(f"** Analyst:** {a}")
