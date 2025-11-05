@@ -1,39 +1,45 @@
-import streamlit as st
+import pandas as pd
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import pandas as pd
 
-# Title
-st.set_page_config(page_title="RAG Demo - No API Key", layout="wide")
-st.title(" Local RAG Demo (No API Key Needed)")
+# Load the small embedding model once
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Load dataset
-uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.write("Data preview:", df.head())
+# Build RAG-like agent
+def build_agent(data_path="business_data.csv"):
+    # Load CSV data
+    df = pd.read_csv(data_path)
 
-    text_column = st.selectbox("Select text column for context:", df.columns)
-    docs = df[text_column].astype(str).tolist()
+    # Convert rows to descriptive text
+    docs = [
+        f"Month: {row['Month']}, Sales: {row['Sales (INR)']}, Expenses: {row['Expenses (INR)']}, "
+        f"Customers: {row['Customers']}, Inventory Cost: {row['Inventory Cost (INR)']}, "
+        f"Marketing Spend: {row['Marketing Spend (INR)']}"
+        for _, row in df.iterrows()
+    ]
 
-    # Embed model (lightweight + no API key)
-    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    # Create embeddings
+    doc_embeddings = model.encode(docs)
 
-    # Precompute embeddings
-    st.info("Encoding text data... (only runs once)")
-    doc_embeddings = model.encode(docs, show_progress_bar=True)
-
-    # User query
-    query = st.text_input("Enter your question:")
-    if query:
+    def answer_question(query: str):
+        # Encode query and compute similarity
         query_emb = model.encode([query])
         sims = cosine_similarity(query_emb, doc_embeddings)[0]
-        top_idx = sims.argsort()[-3:][::-1]
 
-        st.subheader(" Top Relevant Results")
-        for i in top_idx:
-            st.markdown(f"**Context:** {docs[i]}")
-            st.markdown(f"**Similarity:** {sims[i]:.3f}")
-            st.markdown("---")
-else:
-    st.info("Please upload a CSV file to get started.")
+        # Pick the most relevant entries
+        top_indices = sims.argsort()[-3:][::-1]
+        context = "\n".join([docs[i] for i in top_indices])
+
+        # Generate a concise answer (simple rule-based summary)
+        answer = f"Based on the top relevant data:\n{context}\n\nThis suggests that your query '{query}' relates most to these months or figures."
+        return answer
+
+    return answer_question
+
+
+# Initialize agent globally (so it’s not reloaded each time)
+_agent = build_agent()
+
+def query_agent(query: str):
+    """Used by Streamlit UI to answer business queries"""
+    return _agent(query)
