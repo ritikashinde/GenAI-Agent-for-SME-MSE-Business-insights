@@ -1,5 +1,8 @@
 import streamlit as st
-from rag_agent import query_agent  
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from rag_agent import query_agent
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
