@@ -1,16 +1,7 @@
-# Core App & Data
 streamlit
 pandas
 matplotlib
-
-# AI & Language Model (LLM)
-transformers
-torch
-accelerate
-
-# Retrieval-Augmented Generation (RAG)
-langchain-community
-langchain-text-splitters
-sentence-transformers
 faiss-cpu
-typing-extensions
+sentence-transformers
+transformers
+langchain-community
